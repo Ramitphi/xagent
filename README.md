@@ -114,6 +114,15 @@ Stop:
 docker compose down
 ```
 
+### Dockploy startup fix
+
+If Dockploy shows `No module named x-mentions-agent`, it is using an incorrect Python module name.
+
+Use one of these:
+- Docker provider: keep start command empty and let `Dockerfile` run `python -m src.x_mentions_agent.main`.
+- GitHub/Nixpacks provider: this repo includes `Procfile` and `nixpacks.toml` with:
+  - `python -m src.x_mentions_agent.main`
+
 ## Example Mention Flows
 
 1. Clear on-chain request:

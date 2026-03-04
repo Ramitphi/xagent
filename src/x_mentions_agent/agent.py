@@ -230,7 +230,10 @@ class MentionReplyAgent:
                 logger.exception("General LLM reply failed, using default social fallback")
 
         logger.info("route=fallback reply_action=posted reason=default_social")
-        return "Hi, I am OWAIbot. I can chat here and run deep onchain analysis if you share a contract + chain."
+        return (
+            "Hey! 🧙‍♂️ On-Chain Wizard here. I can chat and help break down any EVM contract. "
+            "Share address + chain and I will take it from there."
+        )
 
     def _build_context(self, mention: dict[str, str | None]) -> dict[str, str]:
         mention_text = str(mention.get("text") or "")
@@ -411,22 +414,26 @@ class MentionReplyAgent:
         social_hint = str(context.get("social_hint") or "general")
         mention_text = str(context.get("mention_text") or "")
         mention_hash = _hash_text(mention_text.lower().strip())
-        if recent and (now_ts - recent.get("last_timestamp", 0) < self._settings.general_reply_cooldown_seconds):
+        is_in_cooldown = bool(
+            recent and (now_ts - recent.get("last_timestamp", 0) < self._settings.general_reply_cooldown_seconds)
+        )
+        repeated_social_ping = False
+        if recent and is_in_cooldown:
             recent_hint = str(recent.get("last_social_hint") or "")
             recent_mention_hash = str(recent.get("last_mention_hash") or "")
             is_social_ping = social_hint in {"greeting", "intro"}
             same_bucket = recent_hint == social_hint
             same_mention = recent_mention_hash == mention_hash
-            if is_social_ping and (same_bucket or same_mention):
-                logger.info(
-                    "route=general reply_action=skipped_cooldown reason=repeated_social_ping author_id=%s",
-                    author_id,
-                )
-                return None
+            repeated_social_ping = is_social_ping and (same_bucket or same_mention)
 
         avoid_text = ""
+        recent_reply_hash = ""
         if recent:
             avoid_text = str(recent.get("last_text") or "")
+            recent_reply_hash = str(recent.get("last_text_hash") or "")
+            context["recent_interaction_hint"] = (
+                "User has interacted recently. Acknowledge continuity naturally if it fits."
+            )
 
         attempts = max(0, self._settings.general_reply_max_regen_attempts) + 1
         for idx in range(attempts):
@@ -437,9 +444,15 @@ class MentionReplyAgent:
                 continue
 
             reply_hash = _hash_text(reply)
-            if recent and reply_hash == str(recent.get("last_text_hash") or "") and idx < (attempts - 1):
+            if recent and reply_hash == recent_reply_hash and idx < (attempts - 1):
                 logger.info("route=general reply_action=regen reason=duplicate_hash")
                 continue
+            if repeated_social_ping and recent and reply_hash == recent_reply_hash:
+                logger.info(
+                    "route=general reply_action=skipped_cooldown reason=repeated_social_ping author_id=%s",
+                    author_id,
+                )
+                return None
 
             self._set_recent_general_reply(
                 state=state,

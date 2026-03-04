@@ -163,6 +163,7 @@ class LLMClient:
         username = str(context.get("author_username") or "")
         avoid_text = str(context.get("avoid_text") or "")
         social_hint = str(context.get("social_hint") or "")
+        recent_interaction_hint = str(context.get("recent_interaction_hint") or "")
 
         persona = (
             (agent_prompt or "").strip()
@@ -177,17 +178,33 @@ class LLMClient:
                 "Use different sentence structure while keeping meaning."
             )
 
+        intent_guidance = (
+            "If social intent is intro: introduce yourself as On-Chain Wizard, mention what you can do, and end with a clear CTA. "
+            "If social intent is greeting: give a warm hello and offer help in one or two lines. "
+            "If social intent is general: answer the user's current line first, then mention capabilities if useful."
+        )
+
+        style_exemplar = (
+            "Style exemplar (do not copy verbatim): "
+            "\"Hi there! 🧙‍♂️ On-Chain Wizard here, ready to help you analyze any EVM smart contract. "
+            "Share a contract address + chain and I’ll take it from there.\""
+        )
+
         return (
             "Write one reply tweet to a mention on X. "
             "Always reply to greetings and self-introduction requests. "
             "Be human, warm, concise, and factual. "
+            "Use varied openings, avoid robotic repetition, and sound like a real person. "
             "No financial promises. No fabricated onchain data. "
             "Do not include stack traces or internal errors.\n\n"
             f"Persona instructions:\n{persona}\n\n"
+            f"{intent_guidance}\n"
+            f"{style_exemplar}\n"
             f"Mention author username: {username}\n"
             f"Mention text: {mention_text[:1200]}\n"
             f"Parent tweet text: {parent_text[:1200]}\n"
             f"Social intent hint: {social_hint}\n"
+            f"Recent interaction hint: {recent_interaction_hint[:400]}\n"
             f"{variation_rule}"
         )
 

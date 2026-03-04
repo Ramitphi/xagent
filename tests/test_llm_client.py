@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import types
 import unittest
 
+from src.x_mentions_agent.llm_client import LLMClient
 from src.x_mentions_agent.llm_client import (
     _ensure_full_dashboard_url,
     _is_valid_contract,
@@ -38,6 +40,27 @@ RATIONALE: Contract and chain are explicit.
         payload = {"result": {"dashboardUrl": "https://onchainwizard.ai/shared/abc-123"}}
         fixed = _ensure_full_dashboard_url("TLDR: done.", payload)
         self.assertIn("https://onchainwizard.ai/shared/abc-123", fixed)
+
+    def test_general_prompt_contains_human_style_guidance(self) -> None:
+        settings = types.SimpleNamespace(
+            openai_api_key=None,
+            openai_model="gpt-4.1-mini",
+            llm_timeout_seconds=20,
+            llm_max_context_chars=4000,
+        )
+        client = LLMClient(settings)
+        prompt = client._build_general_reply_prompt(
+            context={
+                "mention_text": "hi are you up?",
+                "parent_text": "",
+                "social_hint": "greeting",
+                "recent_interaction_hint": "User has interacted recently.",
+            },
+            agent_prompt="You are On-Chain Wizard.",
+        )
+        self.assertIn("warm", prompt)
+        self.assertIn("On-Chain Wizard", prompt)
+        self.assertIn("do not copy verbatim", prompt.lower())
 
 
 if __name__ == "__main__":

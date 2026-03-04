@@ -318,7 +318,7 @@ class TestAgentRouting(unittest.TestCase):
             {"last_seen_id": None},
         )
 
-        self.assertIn("OWAIbot", reply)
+        self.assertIn("On-Chain Wizard", reply)
 
     @patch("src.x_mentions_agent.agent.LLMClient")
     @patch("src.x_mentions_agent.agent.OnchainAnalysisClient")
@@ -363,6 +363,53 @@ class TestAgentRouting(unittest.TestCase):
         saved_state = state_store.save.call_args.args[0]
         self.assertEqual(saved_state.get("last_seen_id"), "110")
         self.assertTrue(saved_state.get("startup_synced"))
+
+    @patch("src.x_mentions_agent.agent.LLMClient")
+    @patch("src.x_mentions_agent.agent.OnchainAnalysisClient")
+    @patch("src.x_mentions_agent.agent.TwitterClient")
+    def test_repeated_greeting_regenerates_before_skip(
+        self,
+        twitter_cls: MagicMock,
+        onchain_cls: MagicMock,
+        llm_cls: MagicMock,
+    ) -> None:
+        from src.x_mentions_agent.agent import MentionReplyAgent, _hash_text
+
+        llm = llm_cls.return_value
+        llm.enabled = True
+        llm.understand_mention.return_value = IntentDecision(
+            intent="general",
+            contract_address=None,
+            chain=None,
+            confidence=0.9,
+            rationale="greeting",
+        )
+        llm.draft_general_reply.side_effect = ["Hi there!", "Hey again! Good to see you."]
+
+        agent = MentionReplyAgent(self._settings())
+        state = {
+            "last_seen_id": None,
+            "recent_general_replies_by_user": {
+                "111": {
+                    "last_text": "Hi there!",
+                    "last_text_hash": _hash_text("Hi there!"),
+                    "last_mention_hash": _hash_text("hi"),
+                    "last_social_hint": "greeting",
+                    "last_timestamp": 9999999999,
+                }
+            },
+        }
+        reply = agent._build_reply_for_mention(
+            {
+                "id": "777",
+                "text": "hi",
+                "author_id": "111",
+                "reply_to_tweet_id": None,
+                "conversation_id": "c7",
+            },
+            state,
+        )
+        self.assertEqual(reply, "Hey again! Good to see you.")
 
 
 if __name__ == "__main__":
