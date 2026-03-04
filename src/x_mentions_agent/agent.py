@@ -166,9 +166,7 @@ class MentionReplyAgent:
                     if not chain and convo_chain and _is_retry_request(mention_text):
                         chain = convo_chain
                     if not contract:
-                        return (
-                            "Please share the full contract address (0x...) and chain so I can run it again."
-                        )
+                        return self._missing_contract_reply(context=context, mention_text=mention_text)
                     if not chain:
                         return self._missing_chain_reply()
                     if chain not in SUPPORTED_CHAINS:
@@ -313,6 +311,27 @@ class MentionReplyAgent:
         return (
             "I found a contract address. Which chain is it on? Supported: ethereum, polygon, "
             "bsc, arbitrum, optimism, base, avalanche."
+        )
+
+    def _missing_contract_reply(self, context: dict[str, str], mention_text: str) -> str:
+        tone = "Happy to jump in."
+        if _is_retry_request(mention_text):
+            tone = "I can rerun it right away."
+        if _social_intent_hint(mention_text) == "greeting":
+            tone = "Hey! Great to see you here."
+
+        parent_text = str(context.get("parent_text") or "").strip()
+        if parent_text:
+            return (
+                f"{tone} I can see the conversation context, but I still need the exact contract address "
+                "(full 0x... address) and chain to run analysis. Supported chains: ethereum, polygon, "
+                "bsc, arbitrum, optimism, base, avalanche."
+            )
+
+        return (
+            f"{tone} Share the full contract address (0x...) and chain, and I will run the analysis and "
+            "send you the dashboard. Supported chains: ethereum, polygon, bsc, arbitrum, optimism, "
+            "base, avalanche."
         )
 
     def _format_onchain_result(self, payload: dict[str, object]) -> str:
