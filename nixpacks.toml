@@ -1,8 +1,5 @@
-[phases.setup]
-aptPkgs = ["python3", "python3-pip"]
-
 [phases.install]
-cmds = ["python3 -m pip install --no-cache-dir -r requirements.txt"]
+cmds = ["pip install --no-cache-dir -r requirements.txt"]
 
 [start]
-cmd = "python3 -m src.x_mentions_agent.main"
+cmd = "python -m src.x_mentions_agent.main"
