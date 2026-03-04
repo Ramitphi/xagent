@@ -1,5 +1,5 @@
 [project]
-name = "x-mentions-agent"
+name = "x_mentions_agent"
 version = "0.1.0"
 description = "X mention agent with LLM-first routing and async onchain analysis"
 readme = "README.md"

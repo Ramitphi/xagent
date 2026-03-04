@@ -1,1 +1,1 @@
-worker: python -m src.x_mentions_agent.main
+web: python -m src.x_mentions_agent.main
