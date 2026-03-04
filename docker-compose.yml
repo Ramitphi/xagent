@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  x-mentions-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: x-mentions-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - STATE_FILE=/app/state/state.json
+    volumes:
+      - ./state:/app/state
+      - ./logs:/app/logs

@@ -1,0 +1,15 @@
+[project]
+name = "x-mentions-agent"
+version = "0.1.0"
+description = "X mention agent with LLM-first routing and async onchain analysis"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "tweepy==4.15.0",
+  "requests==2.32.3",
+  "python-dotenv==1.0.1",
+  "openai==1.68.2",
+]
+
+[tool.uv]
+package = false

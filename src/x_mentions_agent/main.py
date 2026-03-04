@@ -12,6 +12,11 @@ from .logging_config import configure_logging
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="X mention auto-reply agent")
     parser.add_argument("--once", action="store_true", help="Run one poll cycle and exit")
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run credentials self-test (auth/mentions/write signal) and exit",
+    )
     return parser.parse_args()
 
 
@@ -22,6 +27,12 @@ def main() -> None:
     configure_logging(settings.log_level)
 
     agent = MentionReplyAgent(settings)
+    self_test = agent.run_startup_self_test()
+
+    if args.self_test:
+        # Non-zero exit behavior is intentionally not forced to keep diagnostics visible in all cases.
+        print(self_test)
+        return
     if args.once:
         agent.run_once()
     else:
