@@ -17,5 +17,6 @@ class StateStore:
             return json.load(f)
 
     def save(self, state: dict[str, Any]) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         with self._path.open("w", encoding="utf-8") as f:
             json.dump(state, f, indent=2)
