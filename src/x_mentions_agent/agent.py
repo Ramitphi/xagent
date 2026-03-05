@@ -20,6 +20,7 @@ SUPPORTED_CHAINS = {"ethereum", "polygon", "bsc", "arbitrum", "optimism", "base"
 RETRY_RE = re.compile(r"\b(again|retry|try again|rerun|re-run|recheck|re-analy[sz]e)\b", re.IGNORECASE)
 GREETING_RE = re.compile(r"\b(hi|hello|hey|gm|good morning|yo|hola)\b", re.IGNORECASE)
 INTRO_RE = re.compile(r"\b(introduce yourself|who are you|about you|what do you do)\b", re.IGNORECASE)
+SELF_HANDLE_RE = re.compile(r"@OWAIbot\b", re.IGNORECASE)
 
 DEFAULT_PERSONA_PROMPT = (
     "You are OWAIbot, a friendly human-like analyst on X. "
@@ -555,6 +556,8 @@ def _is_valid_contract(value: str) -> bool:
 
 def _safe_tweet_text(text: str) -> str:
     cleaned = " ".join(str(text).split())
+    cleaned = SELF_HANDLE_RE.sub("", cleaned)
+    cleaned = " ".join(cleaned.split())
     if "traceback" in cleaned.lower():
         cleaned = "Analysis failed due to an internal error. Please retry shortly."
     return cleaned
