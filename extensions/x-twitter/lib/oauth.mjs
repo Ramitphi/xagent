@@ -33,6 +33,7 @@ export function buildOAuthHeader({
   url,
   query = {},
   body = {},
+  includeBodyInSignature = true,
   consumerKey,
   consumerSecret,
   accessToken,
@@ -49,7 +50,7 @@ export function buildOAuthHeader({
 
   const allParams = {
     ...query,
-    ...body,
+    ...(includeBodyInSignature ? body : {}),
     ...oauthParams
   };
 

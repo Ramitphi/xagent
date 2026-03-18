@@ -15,6 +15,7 @@ async function requestJson({ method, path, query = {}, body, credentials }) {
     url: `${API_BASE}${path}`,
     query,
     body: body && typeof body === "object" ? body : {},
+    includeBodyInSignature: false,
     consumerKey: credentials.consumerKey,
     consumerSecret: credentials.consumerSecret,
     accessToken: credentials.accessToken,
