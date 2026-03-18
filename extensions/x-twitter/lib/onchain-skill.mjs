@@ -1,6 +1,9 @@
-import { runOnchainAnalysis } from "../../../skills/on-chain-wizard/scripts/run_onchain_analysis.mjs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-export async function analyzeContract({ contractAddress, chain }) {
+export async function analyzeContract({ contractAddress, chain, rootDir }) {
+  const skillPath = path.join(rootDir, "skills", "on-chain-wizard", "scripts", "run_onchain_analysis.mjs");
+  const { runOnchainAnalysis } = await import(pathToFileURL(skillPath).href);
   return runOnchainAnalysis({
     contractAddress,
     chain,

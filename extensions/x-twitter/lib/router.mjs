@@ -106,7 +106,7 @@ export async function buildReplyPlan({ mention, state, config, rootDir }) {
     }
 
     const ack = `Starting on-chain analysis for ${contract.slice(0, 8)}... on ${chain}. This usually takes 2-5 mins. I will post results shortly.`;
-    const payload = await analyzeContract({ contractAddress: contract, chain });
+    const payload = await analyzeContract({ contractAddress: contract, chain, rootDir });
     let finalReply = "";
     if (useLlm) {
       try {
@@ -136,7 +136,7 @@ export async function buildReplyPlan({ mention, state, config, rootDir }) {
       };
     }
     const ack = `Starting on-chain analysis for ${fallbackContract.slice(0, 8)}... on ${fallbackChain}. This usually takes 2-5 mins. I will post results shortly.`;
-    const payload = await analyzeContract({ contractAddress: fallbackContract, chain: fallbackChain });
+    const payload = await analyzeContract({ contractAddress: fallbackContract, chain: fallbackChain, rootDir });
     const finalReply = useLlm ? safeTweetText(await draftOnchainReply(context, payload).catch(() => formatOnchainResult(payload))) : formatOnchainResult(payload);
     return {
       type: "ack_then_reply",
@@ -149,7 +149,7 @@ export async function buildReplyPlan({ mention, state, config, rootDir }) {
 
   if (conversation.contract && conversation.chain && isRetryRequest(mentionText)) {
     const ack = `Starting on-chain analysis for ${conversation.contract.slice(0, 8)}... on ${conversation.chain}. This usually takes 2-5 mins. I will post results shortly.`;
-    const payload = await analyzeContract({ contractAddress: conversation.contract, chain: conversation.chain });
+    const payload = await analyzeContract({ contractAddress: conversation.contract, chain: conversation.chain, rootDir });
     const finalReply = useLlm ? safeTweetText(await draftOnchainReply(context, payload).catch(() => formatOnchainResult(payload))) : formatOnchainResult(payload);
     return {
       type: "ack_then_reply",
