@@ -21,7 +21,7 @@ This repo is now structured as an OpenClaw-native workspace:
 - `X_API_KEY_SECRET`
 - `X_ACCESS_TOKEN`
 - `X_ACCESS_TOKEN_SECRET`
-- `OPENAI_API_KEY`
+- `OPENAI_API_KEY` or your chosen gateway model provider credential
 
 Optional:
 
@@ -105,6 +105,7 @@ npm test
 ## Notes
 
 - The `x-twitter` plugin currently ports the existing `xagent` behavior directly into the gateway process.
+- The `x-twitter` plugin no longer calls OpenAI directly; inference now runs through `openclaw agent --local`, so model/provider selection stays with the OpenClaw runtime.
 - On-chain analysis still posts an immediate ack and then a final result in-thread.
 - Full dashboard URLs are preserved.
 - The old Python runtime is no longer the primary deployment target.

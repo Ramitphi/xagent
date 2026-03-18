@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -93,14 +92,21 @@ async function pollOnce(api, runtime) {
         const anchor = ackIds.at(-1) || mention.id;
         await postThread(twitter, safeTweetText(plan.text), anchor);
         state.conversationContexts = state.conversationContexts || {};
-        if (mention.conversationId && plan.conversationContract && plan.conversationChain) {
+        if (mention.conversationId && plan.conversationState) {
           state.conversationContexts[mention.conversationId] = {
-            contract: plan.conversationContract,
-            chain: plan.conversationChain
+            contract: plan.conversationState.contract,
+            chain: plan.conversationState.chain
           };
         }
       } else if (plan.type === "single_reply" && plan.text) {
         await postThread(twitter, safeTweetText(plan.text), mention.id);
+        state.conversationContexts = state.conversationContexts || {};
+        if (mention.conversationId && plan.conversationState) {
+          state.conversationContexts[mention.conversationId] = {
+            contract: plan.conversationState.contract,
+            chain: plan.conversationState.chain
+          };
+        }
         if (plan.generalReplyRecord && mention.authorId) {
           state.recentGeneralRepliesByUser = state.recentGeneralRepliesByUser || {};
           state.recentGeneralRepliesByUser[mention.authorId] = {
@@ -184,7 +190,6 @@ export default function register(api) {
         api.logger?.info?.("x-twitter service disabled");
         return;
       }
-      await fs.mkdir(path.join(process.env.OPENCLAW_STATE_DIR || path.join(ROOT_DIR, ".openclaw-state")), { recursive: true });
       await pollOnce(api).catch((error) => {
         api.logger?.error?.(`x-twitter initial poll failed: ${error?.message || error}`);
       });
