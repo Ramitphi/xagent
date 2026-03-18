@@ -1,0 +1,10 @@
+{
+  "name": "xagent-openclaw-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:x-twitter": "node --check extensions/x-twitter/index.mjs",
+    "check:onchain-skill": "node --check skills/on-chain-wizard/scripts/run_onchain_analysis.mjs",
+    "test": "node --test tests/*.mjs"
+  }
+}

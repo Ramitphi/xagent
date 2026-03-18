@@ -1,0 +1,74 @@
+{
+  "id": "x-twitter",
+  "name": "X Twitter",
+  "description": "Official X mentions polling channel with in-process routing and on-chain analysis handoff.",
+  "version": "0.1.0",
+  "channels": [
+    "x-twitter"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean"
+      },
+      "botUserId": {
+        "type": "string"
+      },
+      "pollIntervalSeconds": {
+        "type": "integer",
+        "minimum": 15
+      },
+      "maxMentionsPerPoll": {
+        "type": "integer",
+        "minimum": 5,
+        "maximum": 100
+      },
+      "skipExistingOnStartup": {
+        "type": "boolean"
+      },
+      "processedMentionsCacheSize": {
+        "type": "integer",
+        "minimum": 100
+      },
+      "generalReplyCooldownSeconds": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "generalReplyMaxRegenAttempts": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "stateDir": {
+        "type": "string"
+      }
+    }
+  },
+  "uiHints": {
+    "botUserId": {
+      "label": "Bot User ID"
+    },
+    "pollIntervalSeconds": {
+      "label": "Poll Interval Seconds"
+    },
+    "maxMentionsPerPoll": {
+      "label": "Max Mentions Per Poll"
+    },
+    "skipExistingOnStartup": {
+      "label": "Skip Existing Mentions On Startup"
+    },
+    "processedMentionsCacheSize": {
+      "label": "Processed Mention Cache Size"
+    },
+    "generalReplyCooldownSeconds": {
+      "label": "General Reply Cooldown Seconds"
+    },
+    "generalReplyMaxRegenAttempts": {
+      "label": "General Reply Max Regen Attempts"
+    },
+    "stateDir": {
+      "label": "State Directory"
+    }
+  }
+}

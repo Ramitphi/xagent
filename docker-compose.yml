@@ -1,16 +1,14 @@
 version: "3.9"
 
 services:
-  x-mentions-agent:
+  openclaw-gateway:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: x-mentions-agent
+    container_name: openclaw-gateway
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - STATE_FILE=/app/state/state.json
     volumes:
-      - ./state:/app/state
+      - ./openclaw-data:/app/.openclaw
       - ./logs:/app/logs

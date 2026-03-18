@@ -22,6 +22,10 @@ class Settings:
     persona_file: str
     skip_existing_mentions_on_startup: bool
     processed_mentions_cache_size: int
+    openclaw_enabled: bool
+    openclaw_respond_url: str | None
+    openclaw_api_key: str | None
+    openclaw_timeout_seconds: int
     onchain_analysis_url: str
     onchain_poll_interval_seconds: int
     onchain_max_wait_seconds: int
@@ -67,6 +71,12 @@ class Settings:
             ).lower()
             == "true",
             processed_mentions_cache_size=int(os.getenv("PROCESSED_MENTIONS_CACHE_SIZE", "2000")),
+            openclaw_enabled=os.getenv("OPENCLAW_ENABLED", "false").lower() == "true",
+            openclaw_respond_url=os.getenv("OPENCLAW_RESPOND_URL"),
+            openclaw_api_key=os.getenv("OPENCLAW_API_KEY"),
+            openclaw_timeout_seconds=int(
+                os.getenv("OPENCLAW_TIMEOUT_SECONDS", os.getenv("REQUEST_TIMEOUT_SECONDS", "20"))
+            ),
             onchain_analysis_url=os.getenv(
                 "ONCHAIN_ANALYSIS_URL",
                 "https://esraarlhpxraucslsdle.supabase.co/functions/v1/onchain-analysis",

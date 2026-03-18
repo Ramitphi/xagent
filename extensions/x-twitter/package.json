@@ -1,0 +1,27 @@
+{
+  "name": "@local/x-twitter",
+  "private": true,
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.mjs"
+    ],
+    "channel": {
+      "id": "x-twitter",
+      "label": "X (Twitter)",
+      "selectionLabel": "X (mentions via official API)",
+      "docsPath": "/channels/x-twitter",
+      "docsLabel": "x-twitter",
+      "blurb": "Official X mention polling and threaded replies for OpenClaw.",
+      "order": 90,
+      "aliases": [
+        "x",
+        "twitter"
+      ]
+    },
+    "install": {
+      "localPath": "extensions/x-twitter",
+      "defaultChoice": "local"
+    }
+  }
+}

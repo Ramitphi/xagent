@@ -1,0 +1,34 @@
+{
+  "plugins": {
+    "load": {
+      "paths": [
+        "/app/extensions/x-twitter"
+      ]
+    },
+    "entries": {
+      "x-twitter": {
+        "enabled": true
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/app",
+      "model": {
+        "primary": "openai/gpt-4.1-mini"
+      }
+    }
+  },
+  "channels": {
+    "x-twitter": {
+      "enabled": true,
+      "botUserId": "2028217683330973697",
+      "pollIntervalSeconds": 60,
+      "maxMentionsPerPoll": 10,
+      "skipExistingOnStartup": true,
+      "processedMentionsCacheSize": 2000,
+      "generalReplyCooldownSeconds": 600,
+      "generalReplyMaxRegenAttempts": 1
+    }
+  }
+}

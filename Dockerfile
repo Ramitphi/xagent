@@ -1,16 +1,14 @@
-FROM python:3.12-slim
+FROM node:22-bookworm-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    STATE_FILE=/app/state/state.json \
-    PERSONA_FILE=/app/agent.md
+ENV OPENCLAW_HOME=/app/.openclaw \
+    OPENCLAW_STATE_DIR=/app/.openclaw/state
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN npm install -g openclaw@latest
 
-COPY src ./src
-COPY agent.md ./agent.md
+COPY . /app
 
-CMD ["python", "-m", "src.x_mentions_agent.main"]
+RUN chmod +x /app/scripts/start-openclaw.sh
+
+CMD ["/app/scripts/start-openclaw.sh"]

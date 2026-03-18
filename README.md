@@ -1,159 +1,110 @@
-# X Mentions Auto-Reply Agent
+# XAgent OpenClaw Workspace
 
-This project runs a bot that:
-1. Polls mentions of your X account.
-2. Reads mention context (mention + parent tweet when available).
-3. Uses OpenAI to understand intent and extract contract/chain when possible.
-4. Runs async `onchain-analysis` (submit + poll) for on-chain requests.
-5. Uses OpenAI to draft both on-chain results and general social replies (`hi`, `introduce yourself`, etc.).
-6. Falls back to regex/onchain routing and safe default social replies when needed.
+This repo is now structured as an OpenClaw-native workspace:
 
-## LLM Routing + Reply Drafting
+1. `extensions/x-twitter/` runs the X mentions poller inside the OpenClaw gateway process.
+2. `skills/on-chain-wizard/` is the separate on-chain analysis skill.
+3. `agent.md` remains the persona source for replies.
+4. The old Python worker under `src/x_mentions_agent/` is retained only as legacy reference during migration.
 
-LLM-first pipeline:
-1. `understand_mention(context)` classifies intent (`onchain_analysis` or `general`) and extracts contract, chain, confidence.
-2. If confidence >= `LLM_CONFIDENCE_THRESHOLD` and contract exists:
-- If chain missing, ask the user for chain.
-- If chain present, run async on-chain analysis.
-3. Non-onchain mentions are handled by `draft_general_reply(context, agent_prompt)` for human-like conversation.
-4. `draft_onchain_reply(context, payload)` drafts final analysis tweet.
-5. Deterministic guardrails validate chain/address, remove unsafe internal error text, and preserve full URLs.
-6. Per-user cooldown and variation logic reduce duplicate-content reply failures on X.
+## Layout
 
-Fallback pipeline:
-- Any LLM failure, timeout, parse error, or low-confidence result falls back to regex chain/address detection.
-- If no on-chain intent is found, agent uses LLM general social reply mode.
+- `extensions/x-twitter/`: local OpenClaw plugin for X polling, parent tweet loading, threaded replies, dedupe, retry context, and human-like social/on-chain routing
+- `skills/on-chain-wizard/`: async submit/poll contract analysis skill
+- `skills/x-research-skill/`: optional research skill retained
+- `openclaw/openclaw.json.example`: example gateway config
+- `scripts/start-openclaw.sh`: container entrypoint
 
-## 1) Setup (Local with uv)
+## Required Environment Variables
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.local/bin/env
-uv sync
-cp .env.example .env
-```
-
-Fill `.env` with your credentials and endpoint values.
-
-## 2) Environment Variables
-
-Required:
 - `X_API_KEY`
 - `X_API_KEY_SECRET`
 - `X_ACCESS_TOKEN`
 - `X_ACCESS_TOKEN_SECRET`
-- `X_BOT_USER_ID`
-
-LLM settings (enable LLM mode):
 - `OPENAI_API_KEY`
-- `OPENAI_MODEL` (default `gpt-4.1-mini`)
-- `LLM_TIMEOUT_SECONDS` (default `20`)
-- `LLM_CONFIDENCE_THRESHOLD` (default `0.65`)
-- `LLM_MAX_CONTEXT_CHARS` (default `4000`)
-- `GENERAL_REPLY_ENABLED` (default `true`)
-- `GENERAL_REPLY_COOLDOWN_SECONDS` (default `600`)
-- `GENERAL_REPLY_MAX_REGEN_ATTEMPTS` (default `1`)
-- `PERSONA_FILE` (default `agent.md`)
-- `SKIP_EXISTING_MENTIONS_ON_STARTUP` (default `true`)
-- `PROCESSED_MENTIONS_CACHE_SIZE` (default `2000`)
 
-If `OPENAI_API_KEY` is missing, agent runs in fallback mode only.
+Optional:
 
-Optional API + runtime settings:
-- `ONCHAIN_ANALYSIS_URL` (default provided in `.env.example`)
-- `ONCHAIN_POLL_INTERVAL_SECONDS` (default `20`)
-- `ONCHAIN_MAX_WAIT_SECONDS` (default `420`)
-- `POLL_INTERVAL_SECONDS` (default `60`)
-- `MAX_MENTIONS_PER_POLL` (default `10`)
-- `REQUEST_TIMEOUT_SECONDS` (default `20`)
-- `STATE_FILE` (default `state.json`)
+- `OPENAI_MODEL` default `gpt-4.1-mini`
+- `LLM_TIMEOUT_SECONDS` default `20`
+- `REQUEST_TIMEOUT_SECONDS` default `20`
+- `ONCHAIN_ANALYSIS_URL`
+- `ONCHAIN_POLL_INTERVAL_SECONDS`
+- `ONCHAIN_MAX_WAIT_SECONDS`
+- `OPENCLAW_HOME`
+- `OPENCLAW_STATE_DIR`
 
-## 3) Run (Local)
+## OpenClaw Config
 
-Single run:
+Copy [openclaw.json.example](/Users/ramit/Downloads/xagent/openclaw/openclaw.json.example) to your gateway config path, typically `~/.openclaw/openclaw.json`, then edit `channels.x-twitter`.
 
-```bash
-uv run python -m src.x_mentions_agent.main --once
+Minimum shape:
+
+```json5
+{
+  "plugins": {
+    "load": {
+      "paths": ["/app/extensions/x-twitter"]
+    },
+    "entries": {
+      "x-twitter": {
+        "enabled": true
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/app",
+      "model": {
+        "primary": "openai/gpt-4.1-mini"
+      }
+    }
+  },
+  "channels": {
+    "x-twitter": {
+      "enabled": true,
+      "botUserId": "2028217683330973697",
+      "pollIntervalSeconds": 60,
+      "maxMentionsPerPoll": 10,
+      "skipExistingOnStartup": true
+    }
+  }
+}
 ```
 
-Continuous polling:
+## Run Locally
+
+Install the OpenClaw CLI and point it at this workspace:
 
 ```bash
-uv run python -m src.x_mentions_agent.main
+npm install -g openclaw@latest
+cp .env.example .env
+mkdir -p .openclaw
+cp openclaw/openclaw.json.example .openclaw/openclaw.json
+OPENCLAW_HOME=$PWD/.openclaw OPENCLAW_STATE_DIR=$PWD/.openclaw/state ./scripts/start-openclaw.sh
 ```
 
-Run tests:
-
-```bash
-uv run python -m unittest discover -s tests -v
-```
-
-Run credentials self-test:
-
-```bash
-uv run python -m src.x_mentions_agent.main --self-test
-```
-
-## 4) Run with Docker
+## Run with Docker
 
 ```bash
 cp .env.example .env
-mkdir -p state logs
+mkdir -p openclaw-data logs
 docker compose up --build -d
 ```
 
-View logs:
+## Validate
+
+Syntax and tests:
 
 ```bash
-docker compose logs -f x-mentions-agent
+npm run check:x-twitter
+npm run check:onchain-skill
+npm test
 ```
-
-Stop:
-
-```bash
-docker compose down
-```
-
-### Dockploy startup fix
-
-If Dockploy shows `No module named x-mentions-agent`, it is using an incorrect Python module name.
-
-Use one of these:
-- Docker provider: keep start command empty and let `Dockerfile` run `python -m src.x_mentions_agent.main`.
-- GitHub/Nixpacks provider: this repo includes `Procfile` and `nixpacks.toml` with:
-  - `python -m src.x_mentions_agent.main`
-
-## Example Mention Flows
-
-1. Clear on-chain request:
-- Mention: "Analyze 0x... on base"
-- LLM detects on-chain intent + address + chain.
-- Agent posts ack, polls async API, posts final summary.
-
-2. General social mention:
-- Mention: "hi @OWAIbot introduce yourself"
-- Agent replies directly using LLM + `agent.md` persona.
-
-3. Ambiguous mention:
-- LLM returns low confidence for on-chain intent.
-- Agent still replies via general social path (or fallback API if configured).
-
-4. Missing chain:
-- Contract found but chain absent.
-- Agent asks: "Which chain is it on?"
-
-5. LLM outage:
-- OpenAI call fails.
-- Agent logs error and uses fallback path; no silent drops.
-
-6. Retry in same thread:
-- User says "try again" without repeating contract/chain.
-- Agent reuses the last contract+chain remembered for that conversation and reruns analysis.
 
 ## Notes
 
-- `state/state.json` stores `last_seen_id` so only new mentions are processed.
-- On first run, startup sync skips old backlog mentions by default (`SKIP_EXISTING_MENTIONS_ON_STARTUP=true`).
-- The agent keeps a processed mention id cache to avoid accidental duplicate replies after restart.
-- Replies are posted as threaded chunks when output exceeds 280 chars (no truncation).
-- On-chain analysis is async and usually takes 2-5 minutes.
+- The `x-twitter` plugin currently ports the existing `xagent` behavior directly into the gateway process.
+- On-chain analysis still posts an immediate ack and then a final result in-thread.
+- Full dashboard URLs are preserved.
+- The old Python runtime is no longer the primary deployment target.

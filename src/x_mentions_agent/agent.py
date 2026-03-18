@@ -10,6 +10,7 @@ from typing import Any
 from .config import Settings
 from .llm_client import LLMClient
 from .onchain_analysis_client import OnchainAnalysisClient
+from .openclaw_client import OpenClawClient
 from .state import StateStore
 from .twitter_client import TwitterClient
 
@@ -43,6 +44,7 @@ class MentionReplyAgent:
         self._settings = settings
         self._twitter = TwitterClient(settings)
         self._onchain = OnchainAnalysisClient(settings)
+        self._openclaw = OpenClawClient(settings)
         self._llm = LLMClient(settings)
         self._state_store = StateStore(settings.state_file)
         self._persona_prompt = self._load_persona_prompt(settings.persona_file)
@@ -144,6 +146,20 @@ class MentionReplyAgent:
         social_hint = _social_intent_hint(mention_text)
         context["social_hint"] = social_hint
 
+        if self._openclaw.enabled:
+            try:
+                openclaw_reply = self._build_openclaw_reply(
+                    mention=mention,
+                    context=context,
+                    state=state,
+                    convo_contract=convo_contract,
+                    convo_chain=convo_chain,
+                )
+                if openclaw_reply is not None:
+                    return openclaw_reply
+            except Exception:
+                logger.exception("OpenClaw routing failed, switching to local routing")
+
         # LLM-first routing.
         if self._llm.enabled:
             try:
@@ -233,6 +249,64 @@ class MentionReplyAgent:
             "Hey! 🧙‍♂️ On-Chain Wizard here. I can chat and help break down any EVM contract. "
             "Share address + chain and I will take it from there."
         )
+
+    def _build_openclaw_reply(
+        self,
+        mention: dict[str, str | None],
+        context: dict[str, str],
+        state: dict[str, Any],
+        convo_contract: str | None,
+        convo_chain: str | None,
+    ) -> str | None:
+        mention_text = str(context.get("mention_text") or "")
+        payload = self._openclaw.respond(
+            {
+                **context,
+                "persona_prompt": self._persona_prompt,
+                "supported_chains": sorted(SUPPORTED_CHAINS),
+                "conversation_contract": convo_contract,
+                "conversation_chain": convo_chain,
+                "is_retry_request": _is_retry_request(mention_text),
+            }
+        )
+
+        route = str(payload.get("route") or "").strip().lower()
+        reply = str(payload.get("reply") or "").strip()
+        contract = str(payload.get("contract_address") or payload.get("contractAddress") or "").strip()
+        chain = str(payload.get("chain") or "").strip().lower()
+
+        if route == "onchain_analysis":
+            if not contract and convo_contract and _is_retry_request(mention_text):
+                contract = convo_contract
+            if not chain and convo_chain and _is_retry_request(mention_text):
+                chain = convo_chain
+            if not contract:
+                logger.info("route=openclaw reply_action=posted reason=missing_contract")
+                return self._missing_contract_reply(context=context, mention_text=mention_text)
+            if not chain or chain not in SUPPORTED_CHAINS:
+                logger.info("route=openclaw reply_action=posted reason=missing_or_invalid_chain")
+                return self._missing_chain_reply()
+
+            logger.info("route=openclaw reply_action=delegated reason=onchain_analysis")
+            self._run_onchain_flow(
+                mention=mention,
+                contract=contract,
+                chain=chain,
+                context=context,
+                state=state,
+            )
+            return ""
+
+        if route in {"general", "needs_more_info", "fallback"} and reply:
+            logger.info("route=openclaw reply_action=posted reason=%s", route)
+            return _safe_tweet_text(reply)
+
+        if reply:
+            logger.info("route=openclaw reply_action=posted reason=direct_reply")
+            return _safe_tweet_text(reply)
+
+        logger.info("route=openclaw reply_action=skipped reason=empty_response")
+        return None
 
     def _build_context(self, mention: dict[str, str | None]) -> dict[str, str]:
         mention_text = str(mention.get("text") or "")
