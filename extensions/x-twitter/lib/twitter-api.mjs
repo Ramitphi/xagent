@@ -1,79 +1,39 @@
-import { buildOAuthHeader } from "./oauth.mjs";
-
-const API_BASE = "https://api.twitter.com";
-
-async function requestJson({ method, path, query = {}, body, credentials }) {
-  const url = new URL(`${API_BASE}${path}`);
-  for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null) {
-      url.searchParams.set(key, String(value));
-    }
-  }
-
-  const header = buildOAuthHeader({
-    method,
-    url: `${API_BASE}${path}`,
-    query,
-    body: body && typeof body === "object" ? body : {},
-    includeBodyInSignature: false,
-    consumerKey: credentials.consumerKey,
-    consumerSecret: credentials.consumerSecret,
-    accessToken: credentials.accessToken,
-    accessTokenSecret: credentials.accessTokenSecret
-  });
-
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Authorization": header,
-      "Content-Type": "application/json"
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    const error = new Error(`${method} ${path} failed: ${response.status} ${text}`);
-    error.status = response.status;
-    throw error;
-  }
-
-  if (response.status === 204) {
-    return null;
-  }
-  return response.json();
-}
+import { TwitterApi as TwitterApiV2 } from "twitter-api-v2";
 
 export class TwitterApi {
   constructor(botUserId) {
     this.credentials = {
-      consumerKey: process.env.X_API_KEY,
-      consumerSecret: process.env.X_API_KEY_SECRET,
+      appKey: process.env.X_API_KEY,
+      appSecret: process.env.X_API_KEY_SECRET,
       accessToken: process.env.X_ACCESS_TOKEN,
-      accessTokenSecret: process.env.X_ACCESS_TOKEN_SECRET
+      accessSecret: process.env.X_ACCESS_TOKEN_SECRET
     };
     this.botUserId = botUserId;
+    this.client = null;
   }
 
   validateCredentials() {
-    for (const key of ["consumerKey", "consumerSecret", "accessToken", "accessTokenSecret"]) {
+    for (const key of ["appKey", "appSecret", "accessToken", "accessSecret"]) {
       if (!this.credentials[key]) {
         throw new Error(`Missing required X credential: ${key}`);
       }
     }
   }
 
-  async fetchMentions({ sinceId, maxResults }) {
+  getClient() {
     this.validateCredentials();
-    const data = await requestJson({
-      method: "GET",
-      path: `/2/users/${this.botUserId}/mentions`,
-      query: {
-        since_id: sinceId || undefined,
-        max_results: Math.max(5, Math.min(maxResults, 100)),
-        "tweet.fields": "author_id,created_at,conversation_id,referenced_tweets"
-      },
-      credentials: this.credentials
+    if (!this.client) {
+      this.client = new TwitterApiV2(this.credentials).readWrite;
+    }
+    return this.client;
+  }
+
+  async fetchMentions({ sinceId, maxResults }) {
+    const client = this.getClient();
+    const data = await client.v2.get(`users/${this.botUserId}/mentions`, {
+      since_id: sinceId || undefined,
+      max_results: Math.max(5, Math.min(maxResults, 100)),
+      "tweet.fields": "author_id,created_at,conversation_id,referenced_tweets"
     });
 
     return (data?.data || []).map((tweet) => {
@@ -91,35 +51,25 @@ export class TwitterApi {
   }
 
   async fetchTweetText(tweetId) {
-    this.validateCredentials();
-    const data = await requestJson({
-      method: "GET",
-      path: `/2/tweets/${tweetId}`,
-      query: {
-        "tweet.fields": "text"
-      },
-      credentials: this.credentials
+    const client = this.getClient();
+    const data = await client.v2.get(`tweets/${tweetId}`, {
+      "tweet.fields": "text"
     });
     return data?.data?.text || null;
   }
 
   async postReply(text, inReplyToTweetId) {
-    this.validateCredentials();
+    const client = this.getClient();
     try {
-      const data = await requestJson({
-        method: "POST",
-        path: "/2/tweets",
-        body: {
-          text,
-          reply: {
-            in_reply_to_tweet_id: inReplyToTweetId
-          }
-        },
-        credentials: this.credentials
+      const data = await client.v2.post("tweets", {
+        text,
+        reply: {
+          in_reply_to_tweet_id: inReplyToTweetId
+        }
       });
       return data?.data?.id ? String(data.data.id) : "";
     } catch (error) {
-      if (String(error.message || "").toLowerCase().includes("duplicate")) {
+      if (String(error?.message || "").toLowerCase().includes("duplicate")) {
         return "";
       }
       throw error;
@@ -127,12 +77,8 @@ export class TwitterApi {
   }
 
   async getMe() {
-    this.validateCredentials();
-    const data = await requestJson({
-      method: "GET",
-      path: "/2/users/me",
-      credentials: this.credentials
-    });
+    const client = this.getClient();
+    const data = await client.v2.get("users/me");
     return data?.data || null;
   }
 }

@@ -2,6 +2,9 @@
   "name": "@local/x-twitter",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "twitter-api-v2": "^1.23.2"
+  },
   "openclaw": {
     "extensions": [
       "./index.mjs"

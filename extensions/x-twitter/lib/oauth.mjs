@@ -33,6 +33,7 @@ export function buildOAuthHeader({
   url,
   query = {},
   body = {},
+  rawBody = "",
   includeBodyInSignature = true,
   consumerKey,
   consumerSecret,
@@ -47,6 +48,10 @@ export function buildOAuthHeader({
     oauth_token: accessToken,
     oauth_version: "1.0"
   };
+
+  if (!includeBodyInSignature && rawBody) {
+    oauthParams.oauth_body_hash = crypto.createHash("sha1").update(rawBody).digest("base64");
+  }
 
   const allParams = {
     ...query,
